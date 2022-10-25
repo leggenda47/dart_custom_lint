@@ -8,6 +8,7 @@ import 'package:package_config/package_config.dart';
 import 'package:path/path.dart' as p;
 import 'package:pubspec_parse/pubspec_parse.dart';
 import 'package:riverpod/riverpod.dart';
+import 'package:yaml/yaml.dart';
 
 import '../protocol/internal_protocol.dart';
 import '../riverpod_utils.dart';
@@ -57,6 +58,19 @@ final _pluginLinkProvider = FutureProvider.autoDispose
     );
   }
 
+  final projectRootPath = Directory.current.path;
+
+  final analysisOptionsUri = Uri.file(
+    p.join(projectRootPath, 'analysis_options.yaml'),
+  );
+
+  final analysisOptionsFile = File(analysisOptionsUri.toFilePath());
+  final analysisOptions =
+      loadYaml(await analysisOptionsFile.readAsString()) as YamlMap;
+  final pluginRules = analysisOptions['params'] as YamlMap?;
+  final currentPluginRules =
+      pluginRules != null ? pluginRules[pluginName] as Object? : null;
+
   // TODO configure that through build.yaml-like file
   final mainUri = Uri.file(
     p.join(pluginRootPath, 'bin', 'custom_lint.dart'),
@@ -64,7 +78,7 @@ final _pluginLinkProvider = FutureProvider.autoDispose
 
   final isolate = await Isolate.spawnUri(
     mainUri,
-    const [],
+    [projectRootPath, currentPluginRules?.toString() ?? ''],
     receivePort.sendPort,
     // WHen published on pub or git, the plugin source often does not have a
     // package_config.json. As such, we manually specify one based on the
