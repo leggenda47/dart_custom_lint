@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
@@ -69,7 +70,10 @@ final _pluginLinkProvider = FutureProvider.autoDispose
       loadYaml(await analysisOptionsFile.readAsString()) as YamlMap;
   final pluginRules = analysisOptions['params'] as YamlMap?;
   final currentPluginRules =
-      pluginRules != null ? pluginRules[pluginName] as Object? : null;
+      pluginRules != null ? pluginRules[pluginName] as YamlMap? : null;
+
+  final pluginRulesText =
+      currentPluginRules != null ? jsonEncode(currentPluginRules) : '';
 
   // TODO configure that through build.yaml-like file
   final mainUri = Uri.file(
@@ -78,7 +82,10 @@ final _pluginLinkProvider = FutureProvider.autoDispose
 
   final isolate = await Isolate.spawnUri(
     mainUri,
-    [projectRootPath, currentPluginRules?.toString() ?? ''],
+    [
+      projectRootPath,
+      pluginRulesText,
+    ],
     receivePort.sendPort,
     // WHen published on pub or git, the plugin source often does not have a
     // package_config.json. As such, we manually specify one based on the
